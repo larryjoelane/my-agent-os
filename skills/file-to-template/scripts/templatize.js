@@ -234,26 +234,70 @@ function nameForCandidate(kind, raw, counters) {
 function applyExplicitVars(text, vars) {
   const replacements = [];
   let result = text;
-  // Longer values first so a shorter value that happens to be a substring
-  // of a longer one doesn't get replaced prematurely.
-  const sorted = [...vars].sort((a, b) => b.value.length - a.value.length);
-  for (const { name, value } of sorted) {
-    let idx = 0;
-    let count = 0;
-    const placeholder = `{{${name}}}`;
-    let next = result.indexOf(value, idx);
-    while (next !== -1) {
-      result = result.slice(0, next) + placeholder + result.slice(next + value.length);
-      count++;
-      idx = next + placeholder.length;
-      next = result.indexOf(value, idx);
+
+  // Group vars by identical literal value: when only one var uses a given
+  // value, every occurrence of it becomes that var's placeholder (a value
+  // repeated verbatim is assumed to mean the same thing each time). When
+  // multiple vars share a value (e.g. two fields that coincidentally hold
+  // the same date), each var instead claims exactly one occurrence, in the
+  // order the vars were given, since the shared text may mean something
+  // different at each spot. Longer values are processed first so a shorter
+  // value that's a substring of a longer one isn't replaced prematurely.
+  const byValue = new Map();
+  for (const v of vars) {
+    if (!byValue.has(v.value)) byValue.set(v.value, []);
+    byValue.get(v.value).push(v.name);
+  }
+  const valuesByLength = [...byValue.keys()].sort((a, b) => b.length - a.length);
+
+  for (const value of valuesByLength) {
+    const names = byValue.get(value);
+
+    if (names.length === 1) {
+      const name = names[0];
+      const placeholder = `{{${name}}}`;
+      let idx = 0;
+      let count = 0;
+      let next = result.indexOf(value, idx);
+      while (next !== -1) {
+        result = result.slice(0, next) + placeholder + result.slice(next + value.length);
+        count++;
+        idx = next + placeholder.length;
+        next = result.indexOf(value, idx);
+      }
+      replacements.push(
+        count === 0
+          ? { name, value, occurrences: 0, warning: 'value not found in file' }
+          : { name, value, occurrences: count }
+      );
+      continue;
     }
-    if (count === 0) {
-      replacements.push({ name, value, occurrences: 0, warning: 'value not found in file' });
-    } else {
-      replacements.push({ name, value, occurrences: count });
+
+    // Multiple vars share this value: assign occurrences one-to-one, in
+    // the order the vars were given, left to right through the text.
+    let searchFrom = 0;
+    for (const name of names) {
+      const placeholder = `{{${name}}}`;
+      const at = result.indexOf(value, searchFrom);
+      if (at === -1) {
+        replacements.push({
+          name,
+          value,
+          occurrences: 0,
+          warning: 'no remaining occurrence of this shared value found in file',
+        });
+        continue;
+      }
+      result = result.slice(0, at) + placeholder + result.slice(at + value.length);
+      searchFrom = at + placeholder.length;
+      replacements.push({ name, value, occurrences: 1 });
     }
   }
+
+  // Restore the original --var order in the report for readability.
+  const orderIndex = new Map(vars.map((v, i) => [v.name, i]));
+  replacements.sort((a, b) => orderIndex.get(a.name) - orderIndex.get(b.name));
+
   return { result, explicitReplacements: replacements };
 }
 
