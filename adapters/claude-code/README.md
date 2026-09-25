@@ -38,6 +38,29 @@ in sync automatically. Editing a skill's `scripts/` (or other supporting
 folder) needs no re-sync, since `.claude/skills/<name>/SKILL.md` reads
 those files from `skills/<name>/` directly at runtime.
 
+## Session memory
+
+The memory skill can save a whole session (see "Save a session" in
+[`skills/memory/SKILL.md`](../../skills/memory/SKILL.md)). Everything in
+that skill is agent-agnostic except two things only Claude Code knows,
+which live here:
+
+- [`record-session-hook.js`](./record-session-hook.js) — a `SessionStart`
+  and `UserPromptSubmit` hook (registered in `.claude/settings.json`) that
+  writes the current `session_id` and `transcript_path` to
+  `.myagent/sessions/current.json`.
+- [`condense-transcript.js`](./condense-transcript.js) — reads Claude
+  Code's `.jsonl` session log (the one in `current.json`, or a path given
+  as its argument) and prints the condensed Markdown that
+  `save-session.js` stores: user messages and assistant replies in full,
+  one line per tool call and per failed tool result, and nothing else. A
+  typical session shrinks to 1–2% of the raw log.
+
+An adapter for another agent needs its own versions of these two: a way
+to record its current session into `current.json`, and a condenser that
+emits the same Markdown shape (`## User` / `## Assistant` sections, with
+`  · [Tool] …` lines under them).
+
 ## Notes
 
 - A skill directory without a `SKILL.md` is skipped with a warning.

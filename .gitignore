@@ -1,6 +1,10 @@
 # Scratch/test files, not part of the repo's tracked content
 /tmp/
 
+# memory skill's local data store (created wherever recall.js/recall-store.js
+# are run from — see skills/memory/SKILL.md)
+.myagent/
+
 # Node.js
 node_modules/
 npm-debug.log*

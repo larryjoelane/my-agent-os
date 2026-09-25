@@ -79,7 +79,7 @@ foreach ($dir in $skillDirs) {
         if (-not (Test-Path $destDir)) {
             New-Item -ItemType Directory -Path $destDir -Force | Out-Null
         }
-        $content = Get-Content -Path $sourceSkillMd -Raw
+        $content = Get-Content -Path $sourceSkillMd -Raw -Encoding utf8
         $content = $content.Replace('{{SKILL_ROOT}}', $skillRoot)
         Set-Content -Path $destSkillMd -Value $content -NoNewline -Encoding utf8
         Write-Host "Synced: $($dir.Name) -> .claude/skills/$($dir.Name)/SKILL.md"

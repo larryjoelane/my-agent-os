@@ -48,3 +48,30 @@ directory with its own mapping — `skills/` itself shouldn't need to change.
 
 - [`file-to-template`](./skills/file-to-template) — turns a file into a
   reusable `{{VAR}}` template (Node.js, zero dependencies).
+- [`memory`](./skills/memory) — search and save project notes via
+  TF-IDF cosine similarity, stored with Node's built-in `node:sqlite`
+  (zero native dependencies, zero external services).
+
+### Testing a skill
+
+Two ways to check a skill actually works:
+
+1. **Through the agent** — once synced (see below), reference the skill
+   naturally in a prompt (e.g. for `memory`: "remember that I prefer
+   pnpm over npm", then later "what did I say about package managers?")
+   and confirm the agent picks it up and behaves as `SKILL.md` describes.
+2. **Directly, bypassing the agent** — every skill's logic lives in
+   `scripts/`, callable on its own. For `memory`:
+
+   ```bash
+   node --experimental-sqlite --no-warnings skills/memory/scripts/recall-store.js "a test note"
+   node --experimental-sqlite --no-warnings skills/memory/scripts/recall.js "test"
+   ```
+
+   This creates `.myagent/sessions/index.db` under whichever directory
+   you run it from (gitignored) — delete that folder afterwards, or set
+   `MYAGENT_SESSIONS_DIR` to point it somewhere disposable, so ad-hoc
+   testing doesn't leave real project data in a test index.
+
+   `node --version` must be 22.5+ for `memory` specifically —
+   `node:sqlite` doesn't exist before that.
