@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Memory Graph</title>
+<meta name="description" content="Memories from the my-agent-os memory skill and the Hebbian co-retrieval weights linking them.">
+<style>
+  :root {
+    --bg: #f7f7f5; --surface: #ffffff; --surface-2: #f0efeb; --border: #dddbd4;
+    --text: #1d1d1b; --muted: #6b6a64; --accent: #3a5bd9; --edge: #5b6477;
+    --kind-memory: #3a5bd9; --kind-session: #c2571a; --kind-other: #2f8f6b;
+    --shadow: 0 1px 2px rgba(0,0,0,.06), 0 4px 16px rgba(0,0,0,.05);
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #131416; --surface: #1b1c1f; --surface-2: #232428; --border: #33353a;
+      --text: #ebeae6; --muted: #9a9993; --accent: #8aa2ff; --edge: #9aa3b8;
+      --kind-memory: #8aa2ff; --kind-session: #f08c4f; --kind-other: #5fcfa2;
+      --shadow: 0 1px 2px rgba(0,0,0,.3), 0 4px 16px rgba(0,0,0,.25);
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #131416; --surface: #1b1c1f; --surface-2: #232428; --border: #33353a;
+    --text: #ebeae6; --muted: #9a9993; --accent: #8aa2ff; --edge: #9aa3b8;
+    --kind-memory: #8aa2ff; --kind-session: #f08c4f; --kind-other: #5fcfa2;
+    --shadow: 0 1px 2px rgba(0,0,0,.3), 0 4px 16px rgba(0,0,0,.25);
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  .wrap { max-width: 1280px; margin: 0 auto; padding: 24px 16px 48px; }
+  header h1 { margin: 0 0 4px; font-size: 1.6rem; letter-spacing: -.01em; }
+  header p { margin: 0; color: var(--muted); }
+  .badge {
+    display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: .8rem;
+    background: var(--surface-2); border: 1px solid var(--border); color: var(--text);
+  }
+  .badge.examples { border-color: var(--kind-other); }
+  .badge.sqlite { border-color: var(--kind-session); }
+  .toolbar {
+    display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: center;
+    margin: 20px 0 12px; padding: 10px 14px; background: var(--surface);
+    border: 1px solid var(--border); border-radius: 10px;
+  }
+  .toolbar label { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: .9rem; }
+  .toolbar input[type="search"] {
+    width: 200px; max-width: 100%; padding: 5px 9px; border-radius: 6px;
+    border: 1px solid var(--border); background: var(--bg); color: var(--text); font: inherit;
+  }
+  .toolbar output { min-width: 3ch; color: var(--text); font-variant-numeric: tabular-nums; }
+  .seg { display: inline-flex; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
+  .seg button {
+    border: 0; padding: 4px 10px; background: transparent; color: var(--muted); font: inherit; font-size: .88rem; cursor: pointer;
+  }
+  .seg button[aria-pressed="true"] { background: var(--accent); color: #fff; }
+  button.plain {
+    border: 1px solid var(--border); background: transparent; color: var(--text);
+    border-radius: 6px; padding: 4px 10px; font: inherit; font-size: .88rem; cursor: pointer;
+  }
+  .legend { display: flex; gap: 14px; margin-left: auto; font-size: .85rem; color: var(--muted); }
+  .legend span::before {
+    content: ""; display: inline-block; width: 10px; height: 10px; border-radius: 50%;
+    margin-right: 6px; vertical-align: -1px; background: var(--c);
+  }
+  .main { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 16px; }
+  @media (max-width: 860px) { .main { grid-template-columns: 1fr; } }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; box-shadow: var(--shadow); }
+  #graph { position: relative; height: 620px; overflow: hidden; touch-action: none; }
+  @media (max-width: 860px) { #graph { height: 460px; } }
+  #graph svg { width: 100%; height: 100%; display: block; cursor: grab; }
+  #graph svg.panning { cursor: grabbing; }
+  .edge { stroke: var(--edge); stroke-linecap: round; }
+  .edge.hl { stroke: var(--accent); }
+  .node circle { stroke: var(--surface); stroke-width: 2; cursor: pointer; }
+  .node.sel circle { stroke: var(--text); stroke-width: 2.5; }
+  .node text {
+    font-size: 10.5px; fill: var(--muted); pointer-events: none;
+    paint-order: stroke; stroke: var(--surface); stroke-width: 3px;
+  }
+  .dim { opacity: .12; }
+  .tip {
+    position: absolute; pointer-events: none; max-width: 280px; padding: 8px 10px;
+    background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+    box-shadow: var(--shadow); font-size: .85rem; display: none;
+  }
+  .hint { position: absolute; left: 12px; bottom: 8px; font-size: .78rem; color: var(--muted); }
+  #panel { padding: 16px; max-height: 620px; overflow: auto; }
+  #panel h2 { margin: 0 0 6px; font-size: 1.05rem; }
+  #panel .meta { color: var(--muted); font-size: .82rem; margin-bottom: 10px; }
+  #panel .text { margin: 0 0 12px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
+  .chip { font-size: .78rem; padding: 1px 8px; border-radius: 999px; background: var(--surface-2); color: var(--muted); }
+  #panel h3 { font-size: .8rem; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 16px 0 8px; }
+  .links { list-style: none; margin: 0; padding: 0; }
+  .links li { padding: 7px 0; border-top: 1px solid var(--border); cursor: pointer; }
+  .links li:hover .ltext { color: var(--accent); }
+  .ltext { font-size: .86rem; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .bar { display: flex; align-items: center; gap: 8px; font-size: .78rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .bar i { display: block; height: 5px; border-radius: 3px; background: var(--accent); }
+  .bar .track { flex: 1; background: var(--surface-2); border-radius: 3px; }
+  .empty { color: var(--muted); }
+  section.edges { margin-top: 24px; }
+  section.edges h2, section.about h2 { font-size: 1.1rem; margin: 0 0 10px; }
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: .86rem; }
+  th, td { text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { color: var(--muted); font-weight: 600; font-size: .78rem; text-transform: uppercase; letter-spacing: .05em; }
+  td.num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+  tbody tr { cursor: pointer; }
+  tbody tr:hover { background: var(--surface-2); }
+  .clip { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; min-width: 180px; }
+  section.about { margin-top: 24px; padding: 16px 18px; color: var(--muted); font-size: .9rem; }
+  section.about p { margin: 0 0 8px; }
+  code { font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: .85em; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Memory graph</h1>
+    <p id="summary">Loading…</p>
+  </header>
+
+  <div class="toolbar">
+    <label>Search <input id="q" type="search" placeholder="text, tag or term"></label>
+    <label>Min weight <input id="min" type="range" min="0" max="1" step="0.01" value="0"><output id="minOut">0.00</output></label>
+    <label>Weight
+      <span class="seg" role="group" aria-label="Weight shown">
+        <button type="button" data-mode="decayed" aria-pressed="true">Decayed</button>
+        <button type="button" data-mode="weight" aria-pressed="false">Stored</button>
+      </span>
+    </label>
+    <label><input id="labels" type="checkbox" checked> Labels</label>
+    <button type="button" class="plain" id="reset">Reset view</button>
+    <div class="legend">
+      <span style="--c: var(--kind-memory)">memory</span>
+      <span style="--c: var(--kind-session)">session</span>
+      <span style="--c: var(--kind-other)">other</span>
+    </div>
+  </div>
+
+  <div class="main">
+    <div id="graph" class="card">
+      <svg id="svg" aria-label="Memory graph"><g id="viewport"><g id="edges"></g><g id="nodes"></g></g></svg>
+      <div class="tip" id="tip"></div>
+      <div class="hint">Drag nodes · scroll to zoom · drag background to pan</div>
+    </div>
+    <aside id="panel" class="card"><p class="empty">Select a memory to see its text and the memories it's linked to.</p></aside>
+  </div>
+
+  <section class="edges">
+    <h2>Hebbian edges</h2>
+    <div class="card table-wrap">
+      <table>
+        <thead><tr><th>Memory A</th><th>Memory B</th><th>Weight</th><th>Stored</th><th>Decayed</th><th>Last co-retrieved</th></tr></thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="about card">
+    <h2>Reading the graph</h2>
+    <p>Each node is a stored memory, sized by the total weight of its edges. Each link joins two memories that came back together in the same search. That's Hebbian "fire together, wire together" strengthening.</p>
+    <p>Every co-retrieval moves an edge 30% of the way to a ceiling of 1, so strong edges level off instead of growing forever. Unused edges decay with a <span id="halfLife">14</span>-day half-life. <b>Stored</b> is the weight on disk at the last co-retrieval. <b>Decayed</b> is that weight after decaying to the as-of date.</p>
+  </section>
+</div>
+
+<script src="graph-data.js"></script>
+<script src="viewer.js"></script>
+</body>
+</html>

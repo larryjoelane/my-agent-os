@@ -1,6 +1,9 @@
 # Scratch/test files, not part of the repo's tracked content
 /tmp/
 
+# memory graph build output (graph.js --out _site); Pages builds it in CI
+_site/
+
 # memory skill's local data store (created wherever recall.js/recall-store.js
 # are run from — see skills/memory/SKILL.md)
 .myagent/

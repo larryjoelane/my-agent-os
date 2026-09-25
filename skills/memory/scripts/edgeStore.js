@@ -43,4 +43,9 @@ function edgesFor(db, memoryId) {
   ).all(memoryId, memoryId);
 }
 
-module.exports = { ensureSchema, getEdge, putEdge, edgesFor };
+// db -> every edge row, as stored (no decay applied).
+function allEdges(db) {
+  return db.prepare('SELECT * FROM edges').all();
+}
+
+module.exports = { ensureSchema, getEdge, putEdge, edgesFor, allEdges };

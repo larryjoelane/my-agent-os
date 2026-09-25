@@ -1,0 +1,51 @@
+# Publishes the memory graph viewer to GitHub Pages, built ONLY from the
+# synthetic example store in examples/memories/ (--examples). Real memory
+# stores live in .myagent/ (gitignored) and never reach CI.
+#
+# One-time setup: repo Settings -> Pages -> Build and deployment ->
+# Source: "GitHub Actions".
+name: Memory graph (Pages)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - examples/memories/**
+      - skills/memory/viewer/**
+      - skills/memory/scripts/**
+      - .github/workflows/memory-graph-pages.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Build viewer from example memories
+        run: node --experimental-sqlite --no-warnings skills/memory/scripts/graph.js --examples --out _site
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

@@ -52,6 +52,24 @@ directory with its own mapping — `skills/` itself shouldn't need to change.
   TF-IDF cosine similarity, stored with Node's built-in `node:sqlite`
   (zero native dependencies, zero external services).
 
+### Memory graph page
+
+`skills/memory/scripts/graph.js` builds a static viewer of the memory
+store and its Hebbian edge weights (`viewer/index.html` + `viewer.js`,
+with the data in a separate `graph-data.js` script). Locally it reads
+`.myagent/sessions/index.db` if one exists and writes to the gitignored
+`.myagent/graph/`:
+
+```bash
+node --experimental-sqlite --no-warnings skills/memory/scripts/graph.js
+```
+
+The GitHub Pages site (`.github/workflows/memory-graph-pages.yml`) is
+built in CI with `--examples`, only from the synthetic notes in
+[`examples/memories/`](./examples/memories) — regenerate those with
+`node examples/memories/generate.js`. Enable it once under Settings →
+Pages → Source: GitHub Actions.
+
 ### Testing a skill
 
 Two ways to check a skill actually works:

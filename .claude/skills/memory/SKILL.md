@@ -137,6 +137,26 @@ redirected output and would corrupt the log. To
 find a session by topic rather than name, search with
 `recall.js "<query>" --kind session`.
 
+## Graph view
+
+```
+node --experimental-sqlite --no-warnings ../../../skills/memory/scripts/graph.js [--examples] [--examples-dir DIR] [--out DIR]
+```
+
+Builds a static page that draws every memory as a node and every Hebbian
+co-retrieval edge as a link weighted by its strength. The page has search,
+a min-weight filter, a stored/decayed toggle and an edge table. Uses the
+project's `index.db` when it has memories; otherwise the synthetic
+example store in `examples/memories/` (`--examples` forces it). Writes
+`index.html` and `viewer.js` (copied from `../../../skills/memory/viewer/`),
+`graph-data.js` and `graph.json` to `--out` (default `.myagent/graph/`,
+gitignored); open `index.html` directly from disk. Read-only on the
+store. Returns `{ ok, source, memories, edges, out }`.
+
+Never pass `--out` pointing at a tracked folder without `--examples`: that
+would put the user's real memories in the repo. Report `out` and
+`source` back plainly.
+
 ## Related memories
 
 ```
