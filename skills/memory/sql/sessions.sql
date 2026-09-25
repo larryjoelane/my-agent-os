@@ -3,6 +3,9 @@
 -- adapters/*/condense-transcript.js) — never the raw agent log. themes is
 -- a JSON-encoded string array. memory_id points at the kind='session' row
 -- in memories that makes this session findable through recall.js search.
+-- raw_path/raw_bytes are set only for raw saves: raw_path is the gzipped
+-- copy of the agent's native log (see scripts/rawArchive.js), relative
+-- to the sessions dir; raw_bytes is its uncompressed size.
 CREATE TABLE IF NOT EXISTS sessions (
   session_id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
@@ -10,6 +13,8 @@ CREATE TABLE IF NOT EXISTS sessions (
   summary TEXT,
   transcript TEXT NOT NULL,
   memory_id INTEGER,
+  raw_path TEXT,
+  raw_bytes INTEGER,
   created_ts TEXT NOT NULL,
   updated_ts TEXT NOT NULL
 );

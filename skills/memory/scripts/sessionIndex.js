@@ -8,6 +8,7 @@ const { termFrequencies, buildIdf, tfidfVector, cosineSimilarity } = require('./
 const store = require('./store');
 const edgeStore = require('./edgeStore');
 const sessionStore = require('./sessionStore');
+const rawArchive = require('./rawArchive');
 const hebbian = require('./hebbian');
 
 // Write one freeform memory. Only stores raw term frequencies — the
@@ -68,9 +69,11 @@ function sessionMemoryText({ name, themes, summary }) {
 // Save (or re-save) one session: the full condensed transcript goes in
 // the sessions table, and a searchable summary row goes in memories so
 // recall.js finds it. Re-saving the same sessionId updates both rows in
-// place rather than adding duplicates.
-function storeSession(db, { sessionId, name, themes = [], summary = null, transcript }) {
+// place rather than adding duplicates. With raw = { sessionsDir,
+// sourcePath }, the agent's native log is also archived byte-for-byte.
+function storeSession(db, { sessionId, name, themes = [], summary = null, transcript, raw = null }) {
   const ts = new Date().toISOString();
+  const archived = raw ? rawArchive.archive(raw.sessionsDir, sessionId, raw.sourcePath) : null;
   const text = sessionMemoryText({ name, themes, summary });
   const memoryRow = { text, termFreq: termFrequencies(tokenize(text)), source: `session:${sessionId}`, tags: themes, kind: 'session', ts };
 
@@ -79,13 +82,36 @@ function storeSession(db, { sessionId, name, themes = [], summary = null, transc
   if (memoryId && store.getMemory(db, memoryId)) store.updateMemory(db, memoryId, memoryRow);
   else memoryId = store.insertMemory(db, memoryRow);
 
-  sessionStore.putSession(db, { sessionId, name, themes, summary, transcript, memoryId, ts });
-  return { sessionId, name, memoryId, updated: Boolean(existing), ts };
+  sessionStore.putSession(db, {
+    sessionId, name, themes, summary, transcript, memoryId,
+    rawPath: archived && archived.rawPath, rawBytes: archived && archived.rawBytes, ts,
+  });
+  return { sessionId, name, memoryId, updated: Boolean(existing), ts, ...(archived || {}) };
 }
 
 // session id or exact name -> full session row (with transcript) | undefined.
 function getSession(db, idOrName) {
   return sessionStore.getSession(db, idOrName) || sessionStore.getSessionByName(db, idOrName);
+}
+
+// session row -> the original raw log's bytes | null when it was never
+// saved raw.
+function getRawLog(sessionsDir, session) {
+  return session.raw_path ? rawArchive.restore(sessionsDir, session.raw_path) : null;
+}
+
+// Every saved session, newest first, with each raw archive extracted to a
+// plain file alongside: adds raw_extracted_path, or raw_extract_error when
+// that one archive can't be restored (the rest of the list still returns).
+function listSessionsExtracted(db, sessionsDir) {
+  return sessionStore.listSessions(db).map((s) => {
+    if (!s.raw_path) return s;
+    try {
+      return { ...s, raw_extracted_path: rawArchive.extract(sessionsDir, s.raw_path).path };
+    } catch (err) {
+      return { ...s, raw_extract_error: err.message };
+    }
+  });
 }
 
 // Every stored memory, newest first, in the same shape as a search hit
@@ -147,5 +173,5 @@ function stats(db) {
 
 module.exports = {
   open: store.open, storeMemory, search, list, relatedTo, stats,
-  storeSession, getSession, listSessions: sessionStore.listSessions,
+  storeSession, getSession, getRawLog, listSessions: sessionStore.listSessions, listSessionsExtracted,
 };

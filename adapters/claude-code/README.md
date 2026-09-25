@@ -56,6 +56,10 @@ which live here:
   one line per tool call and per failed tool result, and nothing else. A
   typical session shrinks to 1–2% of the raw log.
 
+For raw saves (`save-session.js --raw`) the skill archives the file at
+`transcript_path` as-is, so no extra adapter code is needed: the raw
+archive is whatever format the agent writes.
+
 An adapter for another agent needs its own versions of these two: a way
 to record its current session into `current.json`, and a condenser that
 emits the same Markdown shape (`## User` / `## Assistant` sections, with

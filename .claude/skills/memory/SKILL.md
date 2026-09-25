@@ -96,19 +96,44 @@ in place — `updated: true` — rather than adding a duplicate. The name,
 themes and summary are also stored as a `kind: session` memory, so
 `recall.js` searches and `--list --kind session` find saved sessions.
 
-**Output policy:** report the session name and id back plainly.
+**Raw saves:** when the user asks for the raw or full log ("save this raw
+session"), add `--raw`. The condensed transcript is still stored as
+above, and the agent's native log (the `transcript_path` in
+`current.json`, or `--raw-path <file>`) is also archived byte-for-byte,
+gzipped, under `.myagent/sessions/raw/`. The result then also has
+`rawPath`, `rawBytes` (uncompressed) and `storedBytes`. A later re-save
+without `--raw` keeps the earlier archive; one with `--raw` replaces it
+with the longer log.
+
+**Output policy:** report the session name and id back plainly, plus
+the raw log's size for a raw save.
 
 ## Retrieve a session
 
 ```
-node --experimental-sqlite --no-warnings ../../../skills/memory/scripts/session.js list
-node --experimental-sqlite --no-warnings ../../../skills/memory/scripts/session.js show <session-id|name> [--json]
+node --experimental-sqlite --no-warnings ../../../skills/memory/scripts/session.js list [--no-extract]
+node --experimental-sqlite --no-warnings ../../../skills/memory/scripts/session.js show <session-id|name> [--json | --raw] [--out <file>]
 ```
 
 `list` returns `{ sessions[] }`, newest first, without transcripts (with
-`transcript_chars` instead). `show` prints one session as Markdown — a
-header with name, id, themes and summary, then the transcript — ready to
-read back into a new session; `--json` prints the full row instead. To
+`transcript_chars` instead, and `raw_path`/`raw_bytes` for raw saves).
+For every raw save, `list` also extracts the archive automatically to a
+plain `.myagent/sessions/extracted/<session-id>.jsonl` and reports its
+absolute path as `raw_extracted_path` (or `raw_extract_error` if that
+archive couldn't be restored). An extracted copy that is already newer
+than its archive is reused, not rewritten. `--no-extract` skips this.
+When listing, report each `raw_extracted_path` to the user; don't read
+the file into context.
+`show` prints one session as Markdown — a header with name, id, themes
+and summary, then the transcript — ready to read back into a new
+session; `--json` prints the full row instead. `--raw` restores the
+original native log byte-for-byte: archives are gzipped (`.gz`), and
+`show --raw` detects that and decompresses, so never read or copy the
+`.gz` file directly. The log is large, so write it with
+`--out <file>.jsonl` (which prints a JSON receipt with the path and size)
+rather than reading it into context. Use `--out`, not shell `>`
+redirection, since some shells (Windows PowerShell 5.1) re-encode
+redirected output and would corrupt the log. To
 find a session by topic rather than name, search with
 `recall.js "<query>" --kind session`.
 
