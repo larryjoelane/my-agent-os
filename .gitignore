@@ -31,3 +31,6 @@ dist/
 build/
 out/
 .cache/
+
+# Personal VS Code workspace (local folder paths); each clone keeps its own
+my-agent-os.code-workspace

@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- The runner serves this page with a strict Content-Security-Policy header. -->
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<title>Agent Harness</title>
+<link rel="stylesheet" href="style.css">
+<script type="module" src="app.js"></script>
+</head>
+<body>
+<header class="topbar">
+  <h1>Agent Harness</h1>
+  <div class="model">
+    <input id="model-filter" type="search" placeholder="Filter models…" spellcheck="false" autocomplete="off" aria-label="Filter models">
+    <select id="model" aria-label="Model"><option value="">Loading models…</option></select>
+    <span id="model-scope" class="badge" hidden>Free only</span>
+  </div>
+  <div class="auth">
+    <span id="auth-status" class="status"></span>
+    <button id="login" type="button">Log in with OpenRouter</button>
+    <button id="logout" type="button" hidden>Log out</button>
+  </div>
+</header>
+
+<div class="layout">
+  <aside class="sidebar">
+    <section>
+      <h2>Workspace</h2>
+      <div class="tabs" role="tablist">
+        <button type="button" class="tab active" data-tab="github">GitHub repo</button>
+        <button type="button" class="tab" data-tab="local">Local folder</button>
+      </div>
+
+      <form id="gh-form" class="panel" data-panel="github">
+        <div id="gh-oauth" class="panel" hidden>
+          <button type="button" id="gh-login">Sign in with GitHub</button>
+          <div id="gh-user" class="row" hidden>
+            <span id="gh-user-name" class="status ok"></span>
+            <button type="button" id="gh-logout" class="secondary">Sign out</button>
+          </div>
+          <label id="gh-repo-pick" hidden>Repository <select id="gh-repo-select"></select></label>
+          <a id="gh-install" class="hint" target="_blank" rel="noopener" hidden>Add repositories…</a>
+        </div>
+        <details id="gh-pat">
+          <summary class="hint">Use a personal access token instead</summary>
+          <div class="panel">
+            <label>Token <input id="gh-token" type="password" autocomplete="off" placeholder="github_pat_…"></label>
+            <label>Repository <input id="gh-repo" placeholder="owner/repo" spellcheck="false"></label>
+            <p class="hint">Fine-grained token scoped to the repo, with <b>Contents</b> and <b>Pull requests</b> read/write. Stored only in this browser.</p>
+          </div>
+        </details>
+        <label>Branch <input id="gh-branch" placeholder="default branch" spellcheck="false"></label>
+        <label class="check"><input id="gh-allow-default" type="checkbox"> Allow commits to the default branch</label>
+        <button type="submit">Connect</button>
+      </form>
+
+      <div class="panel" data-panel="local" hidden>
+        <button id="pick-folder" type="button">Choose folder…</button>
+        <p class="hint">Chrome or Edge only. The agent edits files on disk directly.</p>
+      </div>
+
+      <p id="ws-status" class="status"></p>
+    </section>
+
+    <section id="sandbox-section" hidden>
+      <h2>Sandbox</h2>
+      <p id="sbx-status" class="status">Not running. It starts when the agent first runs code.</p>
+      <div class="row">
+        <button type="button" id="sbx-start" class="secondary">Start</button>
+        <button type="button" id="sbx-preview" class="secondary" disabled>Preview</button>
+        <button type="button" id="sbx-stop" class="secondary" disabled>Stop</button>
+      </div>
+    </section>
+
+    <section id="changes-section" hidden>
+      <h2>Pending changes</h2>
+      <ul id="changes" class="changes"></ul>
+      <form id="commit-form" class="panel">
+        <label>Branch <input id="commit-branch" spellcheck="false" required></label>
+        <label>Message <input id="commit-msg" required></label>
+        <div class="row">
+          <button type="submit">Commit</button>
+          <button type="button" id="discard" class="secondary">Discard</button>
+        </div>
+      </form>
+    </section>
+  </aside>
+
+  <main class="chat">
+    <div id="log" class="log" aria-live="polite">
+      <p class="empty">Log in with OpenRouter, connect a workspace, then tell the agent what to do.</p>
+    </div>
+    <form id="prompt-form" class="prompt">
+      <textarea id="prompt" rows="3" placeholder="Describe a change… (Ctrl+Enter to send)"></textarea>
+      <div class="row">
+        <span id="usage" class="status"></span>
+        <button type="button" id="new-chat" class="secondary">New chat</button>
+        <button type="button" id="stop" class="secondary" hidden>Stop</button>
+        <button type="submit" id="send">Send</button>
+      </div>
+    </form>
+  </main>
+
+  <aside id="preview" class="preview" hidden>
+    <form id="preview-bar" class="preview-bar">
+      <input id="preview-path" value="/" spellcheck="false" aria-label="Preview path">
+      <button type="submit" class="secondary">Go</button>
+      <a id="preview-open" class="secondary-link" target="_blank" rel="noopener">Open ↗</a>
+      <button type="button" id="preview-close" class="secondary" aria-label="Close preview">✕</button>
+    </form>
+    <iframe id="preview-frame" title="App preview" sandbox="allow-scripts allow-same-origin allow-forms allow-modals allow-popups allow-downloads"></iframe>
+    <details id="preview-logs-box" class="preview-logs">
+      <summary>Server logs</summary>
+      <pre id="preview-logs"></pre>
+    </details>
+  </aside>
+</div>
+</body>
+</html>
